@@ -1,0 +1,26 @@
+---
+title: "Moscow Museums"
+author: "Alex Pilugin"
+date: '24th of December, 2017'
+output: html_document
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "")
+```
+```{r, message = FALSE, results = "hide", warning = FALSE}
+Sys.setlocale("LC_TIME", "English")
+library(knitr)
+library(leaflet)
+library(magrittr)
+```
+```{r}
+lat <- c(55.718922, 55.742359, 55.701412, 55.674702, 55.748848, 55.688435, 55.776417, 55.792404, 55.785042, 55.787666, 55.853504)
+lng <- c(37.592442, 37.678631, 37.671432, 37.771702, 37.650822, 37.772091, 37.676926, 37.632744, 37.616650, 37.534920, 37.444645)
+label <- c("Museum of Minerals", "Museum of Retro Cars", "Kozhuhovskiy Crawl", "Lomakov's Auto and Moto Museum", "Museum of Radio", "Museum of Industrial Culture", "Museum of Soviet Slot Machines", "Railroad Museum", "Army Museum", "Old Airplanes Museum", "Hangar of the Formaer Zakharkovsky Airport")
+moscow <- data.frame(lng, lat, label)
+moscow %>% 
+    leaflet() %>%
+    addTiles() %>%
+    addMarkers(lng = lng, lat = lat, label = label, clusterOptions = markerClusterOptions())
+```

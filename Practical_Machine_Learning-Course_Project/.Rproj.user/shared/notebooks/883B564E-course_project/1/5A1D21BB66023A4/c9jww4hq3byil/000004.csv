@@ -1,0 +1,31 @@
+"0","# random forsest
+rf_model <- train(classe ~ ., data = training, method = ""rf"", prox = TRUE, preProcess = ""pca"")
+"
+"2","model fit failed for Resample01: mtry= 2 Error : cannot allocate vector of size 2.9 Gb
+"
+"2","model fit failed for Resample01: mtry=29 Error : cannot allocate vector of size 2.9 Gb
+"
+"2","invalid mtry: reset to within valid range"
+"2","model fit failed for Resample01: mtry=56 Error : cannot allocate vector of size 2.9 Gb
+"
+"2","model fit failed for Resample02: mtry= 2 Error : cannot allocate vector of size 2.9 Gb
+"
+"2","invalid mtry: reset to within valid range"
+"2","model fit failed for Resample02: mtry=29 Error : cannot allocate vector of size 2.9 Gb
+"
+"2","invalid mtry: reset to within valid range"
+"2","model fit failed for Resample02: mtry=56 Error : cannot allocate vector of size 2.9 Gb
+"
+"2","model fit failed for Resample03: mtry= 2 Error : cannot allocate vector of size 2.9 Gb
+"
+"2","model fit failed for Resample03: mtry=29 Error : cannot allocate vector of size 2.9 Gb
+"
+"2","invalid mtry: reset to within valid range"
+"2","model fit failed for Resample03: mtry=56 Error : cannot allocate vector of size 2.9 Gb
+"
+"2","model fit failed for Resample04: mtry= 2 Error : cannot allocate vector of size 2.9 Gb
+"
+"2","model fit failed for Resample04: mtry=29 Error : cannot allocate vector of size 2.9 Gb
+"
+"2","
+"

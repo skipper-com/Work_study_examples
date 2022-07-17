@@ -1,0 +1,8 @@
+"0","gbm_model <- train(classe ~ . - X, data = training, method = ""gbm"", verbose = FALSE, trControl = fitControl)
+"
+"1","+ Fold1.Rep1: shrinkage=0.1, interaction.depth=1, n.minobsinnode=10, n.trees=150"
+"1"," "
+"1","
+"
+"2","
+"

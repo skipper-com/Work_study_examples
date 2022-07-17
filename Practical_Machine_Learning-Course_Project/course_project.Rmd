@@ -1,0 +1,125 @@
+---
+title: "Manner of exercises"
+author: "Alex Pilugin"
+date: '20-th of December of 2017'
+output: html_document
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "")
+```
+```{r, message = FALSE, results = "hide", warning = FALSE}
+Sys.setlocale("LC_TIME", "English")
+library(knitr)
+library(caret)
+```
+
+# Overview  
+This report shortly describe fitting model process to predict manner of doing exercises by different. Would be fairly enough to say that author totally unrelated to Human Activity Recognition (HAR) data and complete amateur in qualifying/quantifying moving measurements. Moreover, author even don't understand what's the problem to look at people and decide whether they do exercise correctly or not, why it required using such informative technical devices:)
+By the way, in this report author (as far as the laptop allowed it) tried represent simple model predicting (or guessing) of manner doing physical exercises.
+
+# Basic Analysis  
+## Data pre-processing  
+Firstly, load training dataset and look at it structure.
+```{r}
+training <- read.csv("pml-training.csv")
+prediction <- read.csv("pml-testing.csv")
+str(training)
+```
+Lots of observation (19 000+) so it's possible to make training dataset, testing dataset and validation dataset. 160 variables, some of them factors. No codebook. No description. No explanatory names. No hope:) Let's check for NA's.
+```{r}
+sum(is.na(training))
+```
+
+More than 1 200 000+ of NA's. To remove so many NA's (especially in factor variables) let's try following strategy:
+1. Make all factor variable numeric type.
+2. Check each variable for missing values.
+3. If variable has more than 19 000 missing values (more than 96%) omit this variable.
+4. Of course classe factor variable should be excluded.
+Code below embodies this strategy.
+```{r, warning = FALSE}
+exclude <- character(0)
+for (Var in names(training)[-160]) {
+    if (class(training[, Var]) == "factor") {
+        training[, Var] <- as.numeric(as.character(training[, Var]))
+    }
+    missing <- sum(is.na(training[, Var]))
+    if (missing > 19000) {
+        exclude <- cbind(exclude, Var)
+    }
+}
+training <- training[,-which(names(training) %in% exclude)] 
+str(training)
+```
+Now check missing values again and look at structure of training dataset.
+```{r}
+sum(is.na(training))
+```
+## Correlation analysis
+56 variables in dataset, some of them has very similar names. Easy to assume they are highly correlated. Let's look at correlation coefficients.
+```{r}
+length(names(training))
+M <- abs(cor(training[, -57]))
+diag(M) <- 0
+which(M > 0.8, arr.ind = TRUE)
+```
+Nice to see 44 rows in high correlated matrix, so training dataset consist of 22 highly correlated variables. For the serious report on that step it would be worth to spend more time on dataset dimension reducing by omitting highly correlated variables.
+
+
+## Dataset separation for training and testing  
+The same 19 622 observations, but now dataset consists only of 56 variables. Number of observations allows to make training, testing, validation datasets (for example, 60/30/10), but it's not really needed here. The training and testing datasets rather enough, because lot's of observations prevents from over fitting on training dataset. Let's separate initial training dataframe to final training and testing in 75/25 proportion. 
+```{r}
+set.seed(123)
+inTrain = createDataPartition(training$classe, p = 3/4)[[1]]
+training = training[ inTrain,]
+testing = training[-inTrain,]
+```
+
+# Fitting model  
+Reasonably start from easiest solution and apply logistic discriminator analysis and check accuracy by confusion matrix. Firstly, try to predict classe based on all variables in dataset excluding X which represents index of observation.
+```{r}
+set.seed(123)
+lda_model <- train(classe ~ . -X, data = training, method = "lda")
+lda_model[[4]][[2]]
+confusionMatrix(predict(lda_model, testing), testing$classe)[[3]][1]
+```
+Accuracy of model on training sample is 71,4%, on testing sample is 71,5%. This proves that model fitted well, but training sample has more variation of variable so has less accuracy.  
+
+I preferred to fit Random Forest after LDA, but it takes so much RAM and 'kills' my laptop. This time I have to skip Random Forest and move further to Boosting.  
+
+To make fitting process predictable set the fitting control options. It allows to define number of folds and repeats for Boosting method or random forest. It also can enable parallel processing for speed up fitting process. Unfortunately, RAM size of my laptop limits number of folds to 5 and number of repeats to 3 for boosting method, moreover it prohibits parallel computing (each process 'eats' a lot of RAM).  
+```{r}
+fitControl <- trainControl(method= "repeatedcv", number = 5, repeats = 3)
+```
+```{r, cache = TRUE}
+set.seed(123)
+gbm_model <- train(classe ~ . -X, data = training, method = "gbm", verbose = FALSE, trControl = fitControl)
+```
+```{r}
+gbm_model[[4]][[5]][9]
+confusionMatrix(testing$classe, predict(gbm_model, testing))[[3]][1]
+```
+Boosting fits much better. Training accuracy is 99,5%, out-of-sample error (on testing sample) is 99,8%. Again accuracy on testing is a bit higher due to good fitting and less variation. 99,8% is rather enough IMHO for this classification task. I can stop fit models here and announce results.  
+To get better results this report may have two additional methods:  
+* - models superposition using, for example, General Model Additive (GAM)
+* - Principal Component Analysis (PCA) on a training dataset to reduce variables.
+GAM allows to 'sum' prediction effect of one model to another. Overall effect of GAM usually won't be significant, but computing time increases dramatically. Take into account very good accuracy of GBM and poor results of LDA, I decided not to 'GAM' this to models. Apparently, it takes a lot of time to compute.
+PCA can reduce lots of variables from dataset and makes it easier to fit (compute) different models. In my case, probably it could help to done fitting process of Random Forest method. Maybe it worth to try fit PCAed training data, but I doubt it will be interpreted. PCA finds a variables with maximum variation and turns them into main components. And it works well on smaller variable set. But 56 variables, each of them 'carries' a bit of variation. Even reducing to 10-15 principal components makes 1 to 5 relation (variable to components). It won't be interpreted at all consider lack of knowledge about variables. So, my opinion, do a PCA only manually by compiling variables 'by-hand' with strong knowledge of nature these variables, 
+
+
+# Summary  
+1. Dataset has many observations which is good for training/accuracy.
+2. Most of variables are filled with NA's more than 95%.
+3. LDA doesn't fit well even on all valuable variables.
+4. Boosting method allows fitting model with accuracy more than 99%.
+5. Many variables are highly correlated and should be replaced, but it can be done only after deep investigation of details on measurements.
+6. Big dataset requires a lot of RAM, be ready.
+
+
+# Postscriptum
+To make prediction on testing datafile "pml-testing.csv" LDA and GBM models should be applied. LDA misses 5 times:)
+```{r}
+predict(lda_model, prediction)
+predict(gbm_model, prediction)
+sum(predict(lda_model, prediction) != predict(gbm_model, prediction))
+```

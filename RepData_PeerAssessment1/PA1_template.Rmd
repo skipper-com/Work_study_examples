@@ -1,0 +1,150 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+output: 
+  html_document:
+    keep_md: true
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+## Load libraries and set defaults
+Set English locale for appropriate names of days.  
+```{r, message = FALSE, results = "hide", warning = FALSE}
+Sys.setlocale("LC_TIME", "English")
+```  
+
+Load libraries for plotting, data processing and imputing.  
+```{r, message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(mice)
+library(kableExtra)
+library(knitr)
+```  
+
+## Loading and preprocessing the data  
+Download data to local zip-file. Read data to dataframe including header and converting second column to Date format.  
+```{r}
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip", "activity.zip")
+df <- read.table(unz("activity.zip", "activity.csv"),
+                 sep = ",",
+                 header = TRUE,
+                 colClasses = c("numeric", "Date", "numeric"))
+```  
+
+## What is mean total number of steps taken per day?
+Calculate the total number of steps taken per day ignoring NA values
+```{r}
+daily <- df %>% 
+    group_by(date) %>% 
+    summarise(Total = sum(steps, na.rm = TRUE),
+              Average = mean(steps, na.rm = TRUE), 
+              Median = median(steps, na.rm = TRUE))
+```  
+
+Plot histogram using GGplot and 
+```{r}
+g <- ggplot(data = daily, aes(x = Total, fill = I("blue")))
+g + geom_histogram(bins = 50) + theme_bw() + labs(y = "Days", x = "Steps", title = "Total number of steps taken each day")
+```  
+
+Table of mean and median of the total number of steps taken per day
+```{r}
+kable(daily[,c(1, 3, 4)], "html") %>%
+  kable_styling(bootstrap_options = "striped", full_width = F)
+```  
+
+## What is the average daily activity pattern?  
+Calculate the total number of steps taken per interval
+```{r}
+intervaly <- df %>% 
+    group_by(interval) %>% 
+    summarise(avg = mean(steps, na.rm = TRUE))
+```  
+
+Make a time series plot of the 5-minute interval and the average number of steps
+```{r}
+g <- ggplot(data = intervaly, aes(x = interval, y = avg))
+g + geom_line(color = "blue") + theme_bw() + labs(y = "Interval", x = "Average number of steps", title = "Average number of steps taken interavally, averaged across all days")
+```  
+
+Use Which.max to find index of 5-minute interval, contains the maximum number of steps. Then subset dataframe to find number of indexed interval.
+```{r}
+which.max(intervaly$avg)
+intervaly[which.max(intervaly$avg), 1]
+```  
+
+## Imputing missing values  
+Calculate total number of missing values in the dataset
+```{r}
+sum(is.na(df))
+```  
+
+Use predictive mean matching (from "mice package) to filling in all of the missing values in the dataset. For simplicity (and speed) just one result dataframe with 10 steps. Additionally, double Date conversion for properly use of "mice".
+```{r, results = "hide"}
+df_imp <- df %>% 
+    mutate(date = as.factor(date)) %>% 
+    mice(m = 1, maxit = 10, method = 'pmm', seed = 500) %>%
+    complete(1) %>% 
+    mutate(date = as.Date(date))
+```  
+
+Check if there are any NA's left
+```{r}
+sum(is.na(df_imp))
+```  
+
+Calculate the total number of steps taken per day (filled NA values)
+```{r}
+daily_imp <- df_imp %>% 
+  group_by(date) %>% 
+  summarise(Total = sum(steps, na.rm = TRUE), 
+            Average = mean(steps, na.rm = TRUE), 
+            Median = median(steps, na.rm = TRUE))
+```  
+
+Plot histogram using GGplot and 
+```{r}
+g <- ggplot(data = daily_imp, aes(x = Total, fill = I("blue")))
+g + geom_histogram(bins = 50) + theme_bw() + labs(y = "Days", x = "Steps", title = "Total number of steps taken each day")
+```  
+
+Table of mean and median of the total number of steps taken per day
+```{r}
+kable(daily_imp[,c(1, 3, 4)], "html") %>%
+  kable_styling(bootstrap_options = "striped", full_width = F)
+```  
+* Quantity of non-zero steps days getting higher.
+* Avarage quantity of steps per day almost doesn't change.
+* Median of quantity of steps per day still zero.
+
+
+## Are there differences in activity patterns between weekdays and weekends?  
+Copy imputed dataframe and add "weekend" property column filling with weekdays
+```{r}
+df_week <- df_imp
+df_week$weekend <- "weekday"
+```  
+
+Set "weekend" property column with appropriate values ("weekend") at Saturday and Sunday. Factorize column after all.
+```{r}
+df_week$weekend[weekdays(df_week$date) == "Saturday" | weekdays(df_week$date) == "Sunday"] <- "weekend"
+df_week$weekend <- as.factor(df_week$weekend)
+```   
+
+Calculate the total number of steps taken per weekday per interval
+```{r}
+weekend <- df_week %>% 
+  group_by(weekend, interval) %>% 
+  summarise(avg = mean(steps, na.rm = TRUE))
+```  
+
+Make a panel plot containing a time series of the 5-minute interval and the average number of steps taken, averaged across all weekday days or weekend days.
+```{r}
+g <- ggplot(data = weekend, aes(x = interval, y = avg))
+g + geom_line(color = "blue") + facet_grid(weekend ~ .) + theme_bw() + labs(y = "Interval", x = "Average number of steps", title = "Average number of steps taken interavally, averaged across weekday or weekends")
+```

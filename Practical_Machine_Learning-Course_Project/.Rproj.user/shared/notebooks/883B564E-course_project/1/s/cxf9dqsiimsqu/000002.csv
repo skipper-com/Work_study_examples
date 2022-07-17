@@ -1,0 +1,8 @@
+"0","confusionMatrix(testing$classe, predict(gbm_model, testing))[[3]][1]
+"
+"1"," Accuracy "
+"1","
+"
+"1","0.9989098 "
+"1","
+"

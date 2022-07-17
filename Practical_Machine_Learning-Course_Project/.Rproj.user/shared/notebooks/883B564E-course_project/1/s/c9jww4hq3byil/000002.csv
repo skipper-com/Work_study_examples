@@ -1,0 +1,5 @@
+"0","# boosting
+gbm_model <- train(classe ~ ., data = training, method = ""gbm"", verbose = FALSE)
+"
+"2","
+"

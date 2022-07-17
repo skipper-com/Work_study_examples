@@ -1,0 +1,207 @@
+﻿@using OWL_Site.Models
+@model ActiveConfsModel.AConfs
+<div class="control_grid">
+    <table id="table_ac" class="table table-striped table-bordered table-hover" cellspacing="0" width="100%">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Имя виртуальной переговорной комнаты</th>
+                <th>Дата начала мероприятия</th>
+                <th>Комната заблокирована?</th>
+                <th>Участники</th>
+                <th>Управление</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+<div id="modal_block" class="modal fade" role="dialog">
+    <div class="modal-dialog modal-lg">
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-body">
+                <table id="table_ap" class="table table-striped table-bordered table-hover" cellspacing="0" width="100%">
+                    <thead>
+                        <tr>
+                            <th>Ведущий</th>
+                            <th>Качество</th>
+                            <th>Вх./исх.</th>
+                            <th>Время подкл.</th>
+                            <th>Имя</th>
+                            <th>Протокол</th>
+                            <th>Медиа-поток</th>
+                            <th>Микрофон</th>
+                            <th>Презентует</th>
+                            <th>Стримит</th>
+                            <th>IP-адрес</th>
+                            <th>IP-порт</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Закрыть</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+    var oActConfTable = null;
+    var oActPartTable = null;
+    var confParts = false;
+    var confName = 0;
+    var uname = '@Html.Raw(Html.Action("GetCurrentUserName", "Account"))';
+
+    function confs_table() {
+        oActConfTable = $('#table_ac').DataTable({
+            "ordering": true,
+            "searching": true,
+            "autoWidth": false,
+            "processing": true,
+            "scrollY": "75vh",
+            "scrollCollapse": "true",
+            "paging": true,
+            "lengthChange": true,
+            "pageLength": "15",
+            "lengthMenu": [15, 25, 50, 100, 1000],
+            "order": [[0, 'asc']],
+            "serverSide": true,
+
+            "ajax": {
+                "type": "POST",
+                "url": "/Controlpanel/ActiveConf_Ajax",
+                "contentType": 'application/json; charset=utf-8',
+                "data": function (data) { return data = JSON.stringify(data); }
+            },
+
+            "columns": [
+                { "data": "id", "visible": false },
+                { "data": "name" },
+                { "data": "start_time2", "searchable": false },
+                { "data": "is_locked", "searchable": false, "render": function (data) {
+                    if (data) {
+                        return '<div class="fa fa-lock fa-fw brand-color"></div>';
+                    } else {
+                        return '<div class="fa fa-unlock fa-fw brand-color"></div>';
+                    }}
+                },
+                { "data": "name", "searchable": false, "render": function (data, type, full, meta) {
+                        return "<a href=\"#\" onclick=\"display_parts('" + data + "')\">Подробнее...</a>";
+                    }
+                },
+                { "data": "name", "searchable": false, "render": function (data) {
+                    return '<a href="Controlpanel/Control?confname=' + data + '&dispname=' + uname + '">Управление</a>';
+                    }
+                },
+            ],
+
+            "language": {
+                "url": "../../Content/dt_ru.json",
+            },
+        });
+    };
+
+    function popup_parts_table(confName) {
+        $("#modal_block").modal();
+
+        oActPartTable = $('#table_ap').DataTable({
+            "ordering": true,
+            "searching": true,
+            "scrollY": "75vh",
+            "scrollCollapse": "true",
+            "autoWidth": false,
+            "processing": true,
+            "order": [[4, 'asc']],
+            "serverSide": true,
+            "paging": true,
+            "lengthChange": true,
+            "pageLength": "15",
+            "lengthMenu": [15, 25, 50, 100, 1000],
+
+            "ajax": {
+                "type": "POST",
+                "url": "/Controlpanel/ActiveParts_Ajax?Confname=" + confName,
+                "contentType": "application/json; charset=utf-8",
+                "data": function (data) { return data = JSON.stringify(data); }
+            },
+
+            "columns": [
+                { "data": "role", "searchable": false, "render": function (data) {
+                    if (data == 'chair') {
+                        return '<div class="fa fa-check fa-fw green"></div>';
+                    } else {
+                        return '<div class="fa fa-times fa-fw red"></div>';
+                    }}
+                },
+                { "data": "bandwidth", "searchable": false },
+                { "data": "call_direction", "searchable": false, "render": function (data) {
+                    if (data == 'in') {
+                        return '<div class="fa fa-arrow-down fa-fw brand-color"></div>';
+                    } else {
+                        return '<div class="fa fa-arrow-up fa-fw brand-color"></div>';
+                    }}
+                },
+                { "data": "connect_time", "searchable": false },
+                { "data": "display_name", "searchable": true },
+                { "data": "protocol", "searchable": false },
+                { "data": "has_media", "searchable": false,"render": function (data) {
+                    if (data) {
+                        return '<div class="fa fa-check fa-fw green"></div>';
+                    } else {
+                        return '<div class="fa fa-times fa-fw red"></div>';
+                    }}
+                },
+                { "data": "is_muted", "searchable": false, "render": function (data) {
+                    if (!data) {
+                        return '<div class="fa fa-microphone fa-fw green"></div>';
+                    } else {
+                        return '<div class="fa fa-microphone-slash fa-fw red"></div>';
+                    }}
+                },
+                { "data": "is_presenting", "searchable": false, "render": function (data) {
+                    if (data) {
+                        return '<div class="fa fa-bar-chart fa-fw green"></div>';
+                    } else {
+                        return '<div class="fa fa-bar-chart fa-fw red"></div>';
+                    }}
+                },
+                { "data": "is_streaming", "searchable": false, "render": function (data) {
+                    if (!data) {
+                        return '<div class="fa fa-cloud fa-fw black"></div>';
+                    } else {
+                        return '<div class="fa fa-cloud-upload fa-fw green"></div>';
+                    }}
+                },
+                { "data": "remote_address", "searchable": false },
+                { "data": "remote_port", "searchable": false },
+            ],
+
+            "language": {
+                "url": "../../Content/dt_ru.json",
+            },
+        });
+    };
+
+    function display_parts(name) {
+        $("#modal_block").modal();
+
+        if (oActPartTable == null) {
+            popup_parts_table(name);
+        } else {
+            oActPartTable.ajax.url("/Controlpanel/ActiveParts_Ajax?Confname=" + name).load();
+        }
+    };
+
+    function refresh_confs() {
+        if (oActConfTable != null) {
+            oActConfTable.ajax.reload();
+        } else {
+            confs_table();
+        }
+    };
+
+    $(document).ready(function () {
+        refresh_confs();
+    });
+</script>
